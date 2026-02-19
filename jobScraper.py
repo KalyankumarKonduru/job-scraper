@@ -111,6 +111,17 @@ def parseTimePeriod(userInput):
 
     return userInput
 
+def _getChromeVersion():
+    """Detect installed Chrome major version."""
+    import subprocess
+    for path in ['google-chrome', 'google-chrome-stable', '/usr/bin/google-chrome']:
+        try:
+            out = subprocess.check_output([path, '--version'], text=True)
+            return int(out.strip().split()[-1].split('.')[0])
+        except Exception:
+            continue
+    return None
+
 def createDriver():
     """Create a Chrome browser instance using undetected-chromedriver."""
     options = uc.ChromeOptions()
@@ -118,9 +129,13 @@ def createDriver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-gpu")
+    kwargs = {'options': options}
     if os.environ.get('CI'):
         options.add_argument("--disable-extensions")
-    return uc.Chrome(options=options)
+        ver = _getChromeVersion()
+        if ver:
+            kwargs['version_main'] = ver
+    return uc.Chrome(**kwargs)
 
 JOB_PLATFORMS = [
     'lever.co', 'greenhouse.io',
