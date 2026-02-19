@@ -1,0 +1,52 @@
+name: Job Scraper
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # every hour
+  workflow_dispatch: {}   # allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt python-dotenv
+
+      - name: Restore previous data
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: job-data-${{ github.run_id }}
+          restore-keys: job-data-
+
+      - name: Run scraper
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          CI: true
+        run: xvfb-run --auto-servernum python jobScraper.py --auto
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-listings-${{ github.run_number }}
+          path: data/jobListings.xlsx
+          retention-days: 30
